@@ -1,0 +1,1458 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: H&CN Studio API - Product detail page creation system
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: products
+    description: Product management
+  - name: categories
+    description: Product category management
+  - name: images
+    description: AI image generation and management
+  - name: tasks
+    description: Task management
+  - name: guide-images
+    description: Guide image library
+  - name: videos
+    description: AI video generation and management
+  - name: video-tasks
+    description: Video task management
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBody"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create a new category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryBody"
+      responses:
+        "201":
+          description: Created category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List all tasks (newest first)
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get task by ID (includes associated images)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task with images
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskWithImages"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task (sets taskId to null on associated images)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /guide-images:
+    get:
+      operationId: listGuideImages
+      tags: [guideImages]
+      summary: List all guide images
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [product, mood, model]
+      responses:
+        "200":
+          description: List of guide images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GuideImage"
+    post:
+      operationId: createGuideImage
+      tags: [guideImages]
+      summary: Upload a guide image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGuideImageBody"
+      responses:
+        "201":
+          description: Created guide image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuideImage"
+
+  /guide-images/{id}:
+    delete:
+      operationId: deleteGuideImage
+      tags: [guideImages]
+      summary: Delete a guide image
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /video-tasks:
+    get:
+      operationId: listVideoTasks
+      tags: [video-tasks]
+      summary: List all video tasks (newest first)
+      responses:
+        "200":
+          description: List of video tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoTask"
+    post:
+      operationId: createVideoTask
+      tags: [video-tasks]
+      summary: Create a new video task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVideoTaskBody"
+      responses:
+        "201":
+          description: Created video task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoTask"
+
+  /video-tasks/{id}:
+    get:
+      operationId: getVideoTask
+      tags: [video-tasks]
+      summary: Get video task by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Video task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoTask"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateVideoTask
+      tags: [video-tasks]
+      summary: Update a video task name
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVideoTaskBody"
+      responses:
+        "200":
+          description: Updated video task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoTask"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteVideoTask
+      tags: [video-tasks]
+      summary: Delete a video task (nullifies videoTaskId on associated videos)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /videos:
+    get:
+      operationId: listVideos
+      tags: [videos]
+      summary: List all videos (newest first)
+      parameters:
+        - name: videoTaskId
+          in: query
+          schema:
+            type: integer
+          description: Filter by video task ID
+      responses:
+        "200":
+          description: List of videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+
+  /videos/generate-comparison:
+    post:
+      operationId: generateComparisonVideos
+      tags: [videos]
+      summary: Start comparison video generation across Runway, Kling, and Veo models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateVideoBody"
+      responses:
+        "201":
+          description: Video records created for each model that succeeded
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+        "400":
+          description: All models failed or no API keys configured
+
+  /videos/upload-source-image:
+    post:
+      operationId: uploadSourceImage
+      tags: [videos]
+      summary: Upload an image file as the source for i2v video generation
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: Uploaded source image URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+
+  /videos/upload-source:
+    post:
+      operationId: uploadSourceVideo
+      tags: [videos]
+      summary: Upload a source video file for v2v generation
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: Uploaded source video URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+
+  /videos/{id}/status:
+    get:
+      operationId: getVideoStatus
+      tags: [videos]
+      summary: Poll video generation status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Current video status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "404":
+          description: Not found
+
+  /videos/{id}:
+    patch:
+      operationId: updateVideo
+      tags: [videos]
+      summary: Update video name
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVideoBody"
+      responses:
+        "200":
+          description: Updated video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteVideo
+      tags: [videos]
+      summary: Delete a video and its file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /images/generate-variations:
+    post:
+      operationId: generateVariations
+      tags: [images]
+      summary: Generate 3 image variations using Gemini 3.1 Flash Image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateVariationsBody"
+      responses:
+        "200":
+          description: Generated variations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateVariationsResponse"
+
+  /images/generate-gemini:
+    post:
+      operationId: generateGeminiImage
+      tags: [images]
+      summary: Generate image using Gemini 3.1 Flash Image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateImageBody"
+      responses:
+        "200":
+          description: Generated image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedImage"
+
+  /images/analyze-product-ref:
+    post:
+      operationId: analyzeProductRef
+      tags: [images]
+      summary: Analyze a single product reference image using VLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRefBody"
+      responses:
+        "200":
+          description: Product analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductAnalysis"
+
+  /images/analyze-mood-ref:
+    post:
+      operationId: analyzeMoodRef
+      tags: [images]
+      summary: Analyze a single mood / ambience reference image using VLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRefBody"
+      responses:
+        "200":
+          description: Mood analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoodAnalysis"
+
+  /images/analyze-model-ref:
+    post:
+      operationId: analyzeModelRef
+      tags: [images]
+      summary: Analyze a single model reference image using VLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRefBody"
+      responses:
+        "200":
+          description: Model analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelAnalysis"
+
+  /images/suggest-copy:
+    post:
+      operationId: suggestCopy
+      tags: [images]
+      summary: Get LLM-suggested marketing copy for a section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestCopyBody"
+      responses:
+        "200":
+          description: Suggested copy options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestCopyResponse"
+
+  /images:
+    get:
+      operationId: listImages
+      tags: [images]
+      summary: List saved images
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: integer
+        - name: taskId
+          in: query
+          schema:
+            type: integer
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedImage"
+
+  /images/save:
+    post:
+      operationId: saveImage
+      tags: [images]
+      summary: Save a generated image with tag and metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveImageBody"
+      responses:
+        "201":
+          description: Saved image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedImage"
+
+  /images/{id}:
+    patch:
+      operationId: updateImage
+      tags: [images]
+      summary: Update image metadata (tag, status, overlay text)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateImageBody"
+      responses:
+        "200":
+          description: Updated image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedImage"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteImage
+      tags: [images]
+      summary: Delete an image
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /images/upload-reference:
+    post:
+      operationId: uploadReferenceImage
+      tags: [images]
+      summary: Upload a product reference image (white background studio shot)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                productId:
+                  type: integer
+              required:
+                - file
+                - productId
+      responses:
+        "200":
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        referenceImageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - description
+        - category
+        - createdAt
+        - updatedAt
+
+    CreateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+      required:
+        - name
+        - description
+        - category
+
+    UpdateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        parentId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    CreateCategoryBody:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: integer
+      required:
+        - name
+
+    AnalyzeRefBody:
+      type: object
+      properties:
+        image:
+          type: string
+          description: Base64 encoded reference image (single image)
+      required:
+        - image
+
+    ProductAnalysis:
+      type: object
+      properties:
+        productType:
+          type: string
+        colorMap:
+          type: string
+        logoAndGraphics:
+          type: string
+        trimAndBinding:
+          type: string
+        material:
+          type: string
+        constructionDetails:
+          type: string
+        frontBackDifferences:
+          type: string
+        labelAndTags:
+          type: string
+        photographyTips:
+          type: string
+      required:
+        - productType
+        - colorMap
+        - logoAndGraphics
+        - trimAndBinding
+        - material
+        - constructionDetails
+        - frontBackDifferences
+        - labelAndTags
+        - photographyTips
+
+    MoodAnalysis:
+      type: object
+      properties:
+        palette:
+          type: string
+          description: Color palette / dominant colors and tones
+        lighting:
+          type: string
+          description: Lighting direction, quality, color temperature
+        mood:
+          type: string
+          description: Overall emotional tone (cozy, playful, premium, etc.)
+        background:
+          type: string
+          description: Background environment, setting, props
+        composition:
+          type: string
+          description: Framing, depth, focal style
+        photographyStyle:
+          type: string
+          description: Photographic treatment (film, hi-key, soft focus, etc.)
+      required:
+        - palette
+        - lighting
+        - mood
+        - background
+        - composition
+        - photographyStyle
+
+    ModelAnalysis:
+      type: object
+      properties:
+        ageRange:
+          type: string
+          description: Approximate age range of the model
+        bodyType:
+          type: string
+          description: Body type, height impression, proportions
+        pose:
+          type: string
+          description: Pose, gesture, body orientation
+        expression:
+          type: string
+          description: Facial expression, gaze direction
+        styling:
+          type: string
+          description: Hair styling, outfit styling cues, accessories
+        ethnicityOrFeatures:
+          type: string
+          description: Notable ethnic or facial features (neutral description)
+      required:
+        - ageRange
+        - bodyType
+        - pose
+        - expression
+        - styling
+        - ethnicityOrFeatures
+
+    GenerateVariationsBody:
+      type: object
+      properties:
+        prompt:
+          type: string
+        productId:
+          type: integer
+        tag:
+          type: string
+          enum: [general, intro, problem, solution, trust, info]
+        referenceImages:
+          type: array
+          items:
+            type: string
+          maxItems: 6
+          description: Base64 encoded reference images across all categories (max 6 = product 3 + mood 1 + model 2)
+        productAnalysis:
+          type: string
+          description: Deprecated combined product analysis text (kept for compatibility)
+        productAnalyses:
+          type: array
+          items:
+            type: string
+          maxItems: 3
+          description: Per-image product analysis text blocks
+        moodAnalysis:
+          type: string
+          description: Mood / ambience analysis text block
+        modelAnalyses:
+          type: array
+          items:
+            type: string
+          maxItems: 2
+          description: Per-image model analysis text blocks
+      required:
+        - prompt
+        - tag
+
+    GenerateVariationsResponse:
+      type: object
+      properties:
+        variationGroupId:
+          type: string
+        userPromptExpanded:
+          type: string
+          description: AI-expanded version of the user's original prompt
+        variations:
+          type: array
+          items:
+            $ref: "#/components/schemas/VariationItem"
+      required:
+        - variationGroupId
+        - variations
+
+    VariationItem:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+        index:
+          type: integer
+      required:
+        - imageBase64
+        - index
+
+    GenerateImageBody:
+      type: object
+      properties:
+        prompt:
+          type: string
+        productId:
+          type: integer
+        tag:
+          type: string
+          enum: [general, intro, problem, solution, trust, info]
+        referenceImages:
+          type: array
+          items:
+            type: string
+          maxItems: 6
+          description: Base64 encoded reference images across all categories (max 6 = product 3 + mood 1 + model 2)
+        productAnalysis:
+          type: string
+          description: Deprecated combined product analysis text (kept for compatibility)
+        productAnalyses:
+          type: array
+          items:
+            type: string
+          maxItems: 3
+          description: Per-image product analysis text blocks
+        moodAnalysis:
+          type: string
+          description: Mood / ambience analysis text block
+        modelAnalyses:
+          type: array
+          items:
+            type: string
+          maxItems: 2
+          description: Per-image model analysis text blocks
+        isInpainting:
+          type: boolean
+          description: When true, uses inpainting-specific prompt enhancement
+        preExpandedUserPrompt:
+          type: string
+          description: If provided, skip AI enhancement and use this as the expanded prompt directly
+        iterationBaseImage:
+          type: string
+          description: Base64 encoded image to use as visual reference for generating new variations
+      required:
+        - prompt
+        - tag
+
+    GeneratedImage:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+        prompt:
+          type: string
+        enhancedPrompt:
+          type: string
+        userPromptExpanded:
+          type: string
+          description: AI-expanded version of the user's original prompt
+        model:
+          type: string
+        tag:
+          type: string
+      required:
+        - imageBase64
+        - prompt
+        - enhancedPrompt
+        - model
+        - tag
+
+    SuggestCopyBody:
+      type: object
+      properties:
+        productName:
+          type: string
+        productDescription:
+          type: string
+        tag:
+          type: string
+          enum: [general, intro, problem, solution, trust, info]
+        imageBase64:
+          type: string
+          description: Optional image to analyze for context
+      required:
+        - productName
+        - productDescription
+        - tag
+
+    SuggestCopyResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopySuggestion"
+      required:
+        - suggestions
+
+    CopySuggestion:
+      type: object
+      properties:
+        headline:
+          type: string
+        subtext:
+          type: string
+      required:
+        - headline
+        - subtext
+
+    SaveImageBody:
+      type: object
+      properties:
+        productId:
+          type: integer
+        taskId:
+          type: integer
+        tag:
+          type: string
+          enum: [general, intro, problem, solution, trust, info]
+        imageBase64:
+          type: string
+        prompt:
+          type: string
+        model:
+          type: string
+        overlayText:
+          type: string
+        status:
+          type: string
+          enum: [draft, approved]
+          default: draft
+        parentId:
+          type: integer
+          description: ID of the parent image this was iterated from
+      required:
+        - tag
+        - imageBase64
+        - prompt
+        - model
+
+    SavedImage:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: ["integer", "null"]
+        taskId:
+          type: ["integer", "null"]
+        tag:
+          type: string
+        fileName:
+          type: string
+        imageUrl:
+          type: string
+        prompt:
+          type: string
+        model:
+          type: string
+        overlayText:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - tag
+        - fileName
+        - imageUrl
+        - prompt
+        - model
+        - status
+        - createdAt
+        - updatedAt
+
+    UpdateImageBody:
+      type: object
+      properties:
+        tag:
+          type: string
+          enum: [general, intro, problem, solution, trust, info]
+        status:
+          type: string
+          enum: [draft, approved]
+        overlayText:
+          type: string
+
+    UploadResult:
+      type: object
+      properties:
+        url:
+          type: string
+        fileName:
+          type: string
+      required:
+        - url
+        - fileName
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+
+    CreateTaskBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    UpdateTaskBody:
+      type: object
+      properties:
+        name:
+          type: string
+
+    TaskWithImages:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedImage"
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+        - images
+
+    GuideImage:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [product, mood, model]
+        fileName:
+          type: string
+        imageUrl:
+          type: string
+        name:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - fileName
+        - imageUrl
+        - createdAt
+
+    CreateGuideImageBody:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [product, mood, model]
+        imageBase64:
+          type: string
+        name:
+          type: string
+      required:
+        - type
+        - imageBase64
+
+    VideoTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+
+    CreateVideoTaskBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    UpdateVideoTaskBody:
+      type: object
+      properties:
+        name:
+          type: string
+
+    Video:
+      type: object
+      properties:
+        id:
+          type: integer
+        videoTaskId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        fileName:
+          type: string
+        videoUrl:
+          type: string
+        sourceType:
+          type: string
+          enum: [i2v, v2v]
+        sourceImageUrl:
+          type: ["string", "null"]
+        sourceVideoUrl:
+          type: ["string", "null"]
+        prompt:
+          type: string
+        model:
+          type: string
+        replicatePredictionId:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [generating, done, error]
+        errorMessage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - fileName
+        - videoUrl
+        - sourceType
+        - prompt
+        - model
+        - status
+        - createdAt
+        - updatedAt
+
+    GenerateVideoBody:
+      type: object
+      properties:
+        sourceType:
+          type: string
+          enum: [i2v, v2v]
+        prompt:
+          type: string
+        sourceImageUrl:
+          type: string
+          description: URL of source image (for i2v)
+        sourceVideoUrl:
+          type: string
+          description: URL of source video (for v2v)
+        name:
+          type: string
+          description: Optional initial name for the video
+        videoTaskId:
+          type: integer
+          description: Optional video task ID to associate this video with
+        models:
+          type: array
+          items:
+            type: string
+            enum: [runway-gen4-turbo, kling-2.0, veo-3.1]
+          description: >
+            Subset of models to run. If omitted, all configured models run (default comparison).
+        durationSeconds:
+          type: integer
+          minimum: 1
+          description: >
+            Desired video duration in seconds. Each model enforces its own maximum
+            (Runway/Kling: max 10, Veo: max 8). If omitted, each model uses its default (5s).
+      required:
+        - sourceType
+        - prompt
+
+    UpdateVideoBody:
+      type: object
+      properties:
+        name:
+          type: string
+

@@ -1,0 +1,15 @@
+packages:
+  "framer-motion": "For smooth page transitions and micro-interactions"
+  "lucide-react": "Beautiful, consistent iconography"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility function to efficiently merge Tailwind CSS classes"
+  "date-fns": "For formatting timestamps cleanly"
+
+images:
+  - path: "artifacts/hcn-studio/public/images/logo.png"
+    description: "Minimalist geometric logo mark for H&CN Studio, elegant overlapping shapes in dark slate gray, white background, highly polished, vector style"
+    aspect_ratio: "1:1"
+
+notes:
+  - React Query hooks are imported directly from @workspace/api-client-react as instructed
+  - Orval generates query hooks that take optional parameters, we use { query: { enabled: !!value } } for dependent queries
