@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.19.0",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@aws-sdk/s3-request-presigner": "^3.700.0",
     "@google/genai": "^1.45.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
@@ -18,7 +19,6 @@
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
-    "google-auth-library": "^10.6.2",
     "multer": "^2.0.1",
     "replicate": "^1.0.1",
     "sharp": "^0.33.5"

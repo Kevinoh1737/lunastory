@@ -6,7 +6,12 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { randomUUID, createHmac } from "crypto";
-import { uploadBufferToStorage } from "../../lib/objectStorage";
+import {
+  uploadBuffer,
+  deleteByPublicUrl,
+  fetchR2ObjectAsBase64,
+  isR2Url,
+} from "../../lib/r2";
 import {
   GoogleGenAI,
   type GenerateVideosOperation,
@@ -344,14 +349,17 @@ async function rewritePromptForVeo(
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
-async function downloadVideoToUploads(videoUrl: string): Promise<{ fileName: string; localUrl: string }> {
+/**
+ * Downloads a finished video from an external model URL and re-hosts it in R2.
+ * Returns the basename (stored in `videos.fileName`) and the public R2 URL.
+ */
+async function downloadVideoToR2(videoUrl: string): Promise<{ fileName: string; publicUrl: string }> {
   const res = await fetch(videoUrl);
   if (!res.ok) throw new Error(`Failed to download video: ${res.status}`);
-  const buffer = await res.arrayBuffer();
+  const buffer = Buffer.from(await res.arrayBuffer());
   const fileName = `video_${randomUUID()}.mp4`;
-  const filePath = path.join(uploadsDir, fileName);
-  fs.writeFileSync(filePath, Buffer.from(buffer));
-  return { fileName, localUrl: `/api/uploads/${fileName}` };
+  const publicUrl = await uploadBuffer(`videos/${fileName}`, buffer, "video/mp4");
+  return { fileName, publicUrl };
 }
 
 function formatVideoRow(row: typeof videosTable.$inferSelect) {
@@ -375,50 +383,30 @@ function formatVideoRow(row: typeof videosTable.$inferSelect) {
 }
 
 /**
- * Reads a local /api/uploads/ image file and returns its raw base64 bytes and MIME type.
- * Used for APIs (like Veo via Gemini) that require raw image bytes rather than a public URL.
- * Returns null if the URL is not a local uploads path or the file does not exist.
+ * Reads an R2-hosted image and returns its raw base64 bytes and MIME type.
+ * Used for APIs (like Veo via Gemini) that require raw image bytes rather than
+ * a public URL. Returns null if the URL is not an R2 URL (also an SSRF guard —
+ * only our own bucket is ever fetched).
  */
-async function readLocalImageAsBytes(
+async function readImageAsBytes(
   imageUrl: string
 ): Promise<{ imageBytes: string; mimeType: string } | null> {
-  if (!imageUrl.startsWith("/api/uploads/")) return null;
-  const localPath = path.join(uploadsDir, path.basename(imageUrl));
-  if (!fs.existsSync(localPath)) return null;
-  const buffer = fs.readFileSync(localPath);
-  const ext = path.extname(localPath).toLowerCase();
-  const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
-  return { imageBytes: buffer.toString("base64"), mimeType };
+  const result = await fetchR2ObjectAsBase64(imageUrl);
+  if (!result) return null;
+  return { imageBytes: result.base64, mimeType: result.mimeType };
 }
 
 /**
- * Resolves a source file URL to a publicly accessible signed URL.
- * - If already a public URL: returned as-is.
- * - If a local /api/uploads/ path: uploaded to GCS and a 2-hour signed URL is returned.
- * - Returns null if the bucket is not configured and the file is local (caller should handle gracefully).
+ * Resolves a source file URL to one that external video APIs (Runway/Kling)
+ * can fetch. R2-hosted source files are already publicly accessible, so they
+ * (and any other absolute URL) are returned as-is. Legacy `/api/uploads/`
+ * paths are no longer supported — those files were never migrated to R2.
  */
-async function resolveLocalFileToPublicUrl(
-  fileUrl: string,
-  mediaType: "image" | "video"
-): Promise<string | null> {
-  if (!fileUrl.startsWith("/api/uploads/")) {
-    return fileUrl;
-  }
-  if (!process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID) {
-    console.warn("[upload] DEFAULT_OBJECT_STORAGE_BUCKET_ID not set — cannot upload local file to GCS; model will be skipped for this request");
-    return null;
-  }
-  const localPath = path.join(uploadsDir, path.basename(fileUrl));
-  if (!fs.existsSync(localPath)) {
-    console.warn(`[upload] Local file not found: ${localPath}`);
-    return null;
-  }
-  const buffer = fs.readFileSync(localPath);
-  const ext = path.extname(localPath).toLowerCase();
-  const contentType =
-    mediaType === "video" ? "video/mp4" : ext === ".png" ? "image/png" : "image/jpeg";
-  const fileName = path.basename(localPath);
-  return uploadBufferToStorage(buffer, fileName, contentType, 7200);
+async function resolveSourceUrlForExternalApi(fileUrl: string): Promise<string | null> {
+  if (isR2Url(fileUrl)) return fileUrl;
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  console.warn(`[upload] Source URL is not an R2 or absolute URL, cannot resolve: ${fileUrl}`);
+  return null;
 }
 
 // ─── Veo consecutive-poll-error tracking ─────────────────────────────────────
@@ -489,8 +477,7 @@ router.post("/videos/generate-comparison", async (req, res): Promise<void> => {
   if (needsPublicUrl) {
     try {
       const rawUrl = sourceType === "i2v" ? sourceImageUrl! : sourceVideoUrl!;
-      const mediaKind = sourceType === "i2v" ? "image" : "video";
-      publicSourceUrl = await resolveLocalFileToPublicUrl(rawUrl, mediaKind);
+      publicSourceUrl = await resolveSourceUrlForExternalApi(rawUrl);
       if (!publicSourceUrl) {
         console.warn("[upload] Could not resolve source to a public URL; models requiring a public URL will be skipped");
       }
@@ -502,11 +489,11 @@ router.post("/videos/generate-comparison", async (req, res): Promise<void> => {
   if (needsImageBytes && sourceImageUrl) {
     try {
       // Veo i2v (Gemini API) requires raw image bytes; it does not support public URL inputs.
-      // We only read bytes from trusted local /api/uploads/ files to avoid SSRF.
-      // If sourceImageUrl is not a local upload (e.g. an external URL), Veo i2v will be skipped.
-      veoImageInput = await readLocalImageAsBytes(sourceImageUrl);
+      // We only read bytes from our own R2 bucket to avoid SSRF.
+      // If sourceImageUrl is not an R2 URL, Veo i2v will be skipped.
+      veoImageInput = await readImageAsBytes(sourceImageUrl);
       if (!veoImageInput) {
-        console.warn("[veo] Cannot read image bytes for Veo i2v: source is not a local upload file. Veo i2v will be skipped.");
+        console.warn("[veo] Cannot read image bytes for Veo i2v: source is not an R2 URL. Veo i2v will be skipped.");
       }
     } catch (error: any) {
       console.warn("[veo] Could not load image bytes for Veo i2v:", error?.message);
@@ -560,8 +547,8 @@ router.post("/videos/generate-comparison", async (req, res): Promise<void> => {
     res.status(400).json({
       error:
         "No comparison jobs could be started. Check that at least one model API key is configured " +
-        "(RUNWAY_API_KEY, KLING_API_KEY, GOOGLE_AI_API_KEY) and that the source media could be resolved " +
-        "(DEFAULT_OBJECT_STORAGE_BUCKET_ID may be required for local upload files).",
+        "(RUNWAY_API_KEY, KLING_API_KEY, GOOGLE_AI_API_KEY) and that the source media URL " +
+        "is a valid R2 or absolute URL.",
     });
     return;
   }
@@ -619,9 +606,14 @@ router.post("/videos/upload-source-image", uploadImage.single("file"), async (re
   try {
     const ext = path.extname(req.file.originalname) || ".jpg";
     const fileName = `source_image_${randomUUID()}${ext}`;
-    const newPath = path.join(uploadsDir, fileName);
-    fs.renameSync(req.file.path, newPath);
-    res.json({ url: `/api/uploads/${fileName}`, fileName });
+    const buffer = fs.readFileSync(req.file.path);
+    const url = await uploadBuffer(
+      `video-sources/${fileName}`,
+      buffer,
+      req.file.mimetype || "image/jpeg",
+    );
+    fs.unlinkSync(req.file.path);
+    res.json({ url, fileName });
   } catch (error: any) {
     console.error("uploadSourceImage error:", error);
     res.status(500).json({ error: error?.message || "Failed to upload image" });
@@ -637,9 +629,14 @@ router.post("/videos/upload-source", upload.single("file"), async (req, res): Pr
   try {
     const ext = path.extname(req.file.originalname) || ".mp4";
     const fileName = `source_video_${randomUUID()}${ext}`;
-    const newPath = path.join(uploadsDir, fileName);
-    fs.renameSync(req.file.path, newPath);
-    res.json({ url: `/api/uploads/${fileName}`, fileName });
+    const buffer = fs.readFileSync(req.file.path);
+    const url = await uploadBuffer(
+      `video-sources/${fileName}`,
+      buffer,
+      req.file.mimetype || "video/mp4",
+    );
+    fs.unlinkSync(req.file.path);
+    res.json({ url, fileName });
   } catch (error: any) {
     console.error("uploadSourceVideo error:", error);
     res.status(500).json({ error: error?.message || "Failed to upload video" });
@@ -677,8 +674,8 @@ router.get("/videos/:id/status", async (req, res): Promise<void> => {
           const [u] = await db.update(videosTable).set({ status: "error", errorMessage: "No output URL", updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
           res.json(formatVideoRow(u)); return;
         }
-        const { fileName, localUrl } = await downloadVideoToUploads(outputUrl);
-        const [u] = await db.update(videosTable).set({ status: "done", fileName, videoUrl: localUrl, updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
+        const { fileName, publicUrl } = await downloadVideoToR2(outputUrl);
+        const [u] = await db.update(videosTable).set({ status: "done", fileName, videoUrl: publicUrl, updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
         res.json(formatVideoRow(u));
       } else if (task.status === "FAILED") {
         const [u] = await db.update(videosTable).set({ status: "error", errorMessage: task.failure || task.failureCode || "Runway failed", updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
@@ -700,8 +697,8 @@ router.get("/videos/:id/status", async (req, res): Promise<void> => {
           const [u] = await db.update(videosTable).set({ status: "error", errorMessage: "No output URL", updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
           res.json(formatVideoRow(u)); return;
         }
-        const { fileName, localUrl } = await downloadVideoToUploads(outputUrl);
-        const [u] = await db.update(videosTable).set({ status: "done", fileName, videoUrl: localUrl, updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
+        const { fileName, publicUrl } = await downloadVideoToR2(outputUrl);
+        const [u] = await db.update(videosTable).set({ status: "done", fileName, videoUrl: publicUrl, updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
         res.json(formatVideoRow(u));
       } else if (task.task_status === "failed") {
         const [u] = await db.update(videosTable).set({ status: "error", errorMessage: task.task_status_msg || "Kling failed", updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
@@ -750,8 +747,8 @@ router.get("/videos/:id/status", async (req, res): Promise<void> => {
           const [u] = await db.update(videosTable).set({ status: "error", errorMessage: "No output URI from Veo", updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
           res.json(formatVideoRow(u)); return;
         }
-        const { fileName, localUrl } = await downloadVideoToUploads(outputUrl);
-        const [u] = await db.update(videosTable).set({ status: "done", fileName, videoUrl: localUrl, updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
+        const { fileName, publicUrl } = await downloadVideoToR2(outputUrl);
+        const [u] = await db.update(videosTable).set({ status: "done", fileName, videoUrl: publicUrl, updatedAt: new Date() }).where(eq(videosTable.id, video.id)).returning();
         res.json(formatVideoRow(u));
       } else {
         res.json(formatVideoRow(video));
@@ -791,9 +788,12 @@ router.delete("/videos/:id", async (req, res): Promise<void> => {
   try {
     const [video] = await db.delete(videosTable).where(eq(videosTable.id, params.data.id)).returning();
     if (!video) { res.status(404).json({ error: "Video not found" }); return; }
-    if (video.fileName) {
-      const filePath = path.join(uploadsDir, video.fileName);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (video.videoUrl) {
+      try {
+        await deleteByPublicUrl(video.videoUrl);
+      } catch (e) {
+        console.warn("Failed to delete video object from R2:", e);
+      }
     }
     res.sendStatus(204);
   } catch (error: any) {

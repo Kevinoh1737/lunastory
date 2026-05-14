@@ -6,6 +6,7 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import { uploadBuffer, deleteByPublicUrl } from "../../lib/r2";
 import {
   GenerateGeminiImageBody,
   GenerateGeminiImageResponse,
@@ -638,12 +639,9 @@ router.post("/images/save", async (req, res): Promise<void> => {
 
   const idSegment = taskId ? `task${taskId}` : (productId ? `prod${productId}` : "nosrc");
   const fileName = `${tag}_${idSegment}_${randomUUID()}.png`;
-  const filePath = path.join(uploadsDir, fileName);
 
   const imageBuffer = Buffer.from(imageBase64, "base64");
-  fs.writeFileSync(filePath, imageBuffer);
-
-  const imageUrl = `/api/uploads/${fileName}`;
+  const imageUrl = await uploadBuffer(`images/${fileName}`, imageBuffer, "image/png");
 
   const [image] = await db
     .insert(imagesTable)
@@ -709,9 +707,10 @@ router.delete("/images/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const filePath = path.join(uploadsDir, image.fileName);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+  try {
+    await deleteByPublicUrl(image.imageUrl);
+  } catch (e) {
+    console.warn("Failed to delete image object from R2:", e);
   }
 
   res.sendStatus(204);
@@ -725,11 +724,15 @@ router.post("/images/upload-reference", upload.single("file"), async (req, res):
 
   const ext = path.extname(req.file.originalname) || ".png";
   const fileName = `ref_${randomUUID()}${ext}`;
-  const newPath = path.join(uploadsDir, fileName);
 
-  fs.renameSync(req.file.path, newPath);
+  const buffer = fs.readFileSync(req.file.path);
+  const url = await uploadBuffer(
+    `references/${fileName}`,
+    buffer,
+    req.file.mimetype || "image/png",
+  );
+  fs.unlinkSync(req.file.path);
 
-  const url = `/api/uploads/${fileName}`;
   res.json(UploadReferenceImageResponse.parse({ url, fileName }));
 });
 

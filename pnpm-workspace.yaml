@@ -27,6 +27,15 @@
 # ============================================================================
 minimumReleaseAge: 1440
 
+# The @aws-sdk/* and @smithy/* packages (used by the Cloudflare R2 client) are
+# published by AWS — a trusted org — multiple times per day. The 1-day release-age
+# rule is impractical for their large transitive graph (a single fresh @smithy/core
+# release blocks the whole install). Excluded here per the trusted-org exception
+# documented above. Keep this list minimal.
+minimumReleaseAgeExclude:
+  - '@aws-sdk/*'
+  - '@smithy/*'
+
 packages:
   - artifacts/*
   - lib/*

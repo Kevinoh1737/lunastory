@@ -1,9 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, guideImagesTable } from "@workspace/db";
-import fs from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
+import { uploadBuffer, deleteByPublicUrl } from "../lib/r2";
 import {
   CreateGuideImageBody,
   ListGuideImagesResponseItem,
@@ -12,11 +11,6 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
-
-const uploadsDir = path.resolve("uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 router.get("/guide-images", async (req, res): Promise<void> => {
   const query = ListGuideImagesQueryParams.safeParse(req.query);
@@ -53,12 +47,8 @@ router.post("/guide-images", async (req, res): Promise<void> => {
 
   try {
     const fileName = `guide_${type}_${randomUUID()}.png`;
-    const filePath = path.join(uploadsDir, fileName);
-
     const imageBuffer = Buffer.from(imageBase64, "base64");
-    fs.writeFileSync(filePath, imageBuffer);
-
-    const imageUrl = `/api/uploads/${fileName}`;
+    const imageUrl = await uploadBuffer(`guide-images/${fileName}`, imageBuffer, "image/png");
 
     const [image] = await db
       .insert(guideImagesTable)
@@ -92,9 +82,10 @@ router.delete("/guide-images/:id", async (req, res): Promise<void> => {
       return;
     }
 
-    const filePath = path.join(uploadsDir, image.fileName);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      await deleteByPublicUrl(image.imageUrl);
+    } catch (e) {
+      console.warn("Failed to delete guide image object from R2:", e);
     }
 
     res.sendStatus(204);
