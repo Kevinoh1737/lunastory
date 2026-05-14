@@ -1,0 +1,22 @@
+# Reinstalled / rebuilt inside the image
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+
+# Secrets — never bake into the image (env vars are set in Cloud Run)
+.env
+**/.env
+**/.env.*
+!**/.env.example
+
+# VCS / tooling / docs
+.git
+.gitignore
+.vercel
+.claude
+docs
+*.zip
+
+# Local-only upload scratch dir
+artifacts/*/uploads
