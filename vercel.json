@@ -2,8 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/hcn-studio build",
-  "outputDirectory": "artifacts/hcn-studio/dist/public",
-  "framework": null,
+  "outputDirectory": "artifacts/hcn-studio/dist",
   "rewrites": [
     {
       "source": "/api/:path*",
