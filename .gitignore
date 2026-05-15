@@ -56,5 +56,10 @@ Thumbs.db
 # Uploaded / generated assets (now stored in Cloudflare R2)
 artifacts/*/uploads/
 
+# Data dumps / DB snapshots — never commit (may contain user content)
+*-prod-data.zip
+*prod-dump*
+hcn-studio-prod-data.zip
+
 # Deploy tooling
 .vercel
