@@ -24,9 +24,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    // Write to <repo-root>/dist so Vercel's Vite preset (which expects `dist/`
-    // at the project root) picks it up without a custom outputDirectory.
-    outDir: path.resolve(import.meta.dirname, "..", "..", "dist"),
+    outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
   },
   server: {

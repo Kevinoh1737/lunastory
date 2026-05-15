@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/hcn-studio build",
+  "buildCommand": "pnpm --filter @workspace/hcn-studio build && rm -rf dist && cp -R artifacts/hcn-studio/dist dist",
   "outputDirectory": "dist",
   "rewrites": [
     {
