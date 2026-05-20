@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { purchaseOrdersTable } from "./purchaseOrders";
@@ -9,10 +9,10 @@ export const purchaseOrderLinesTable = pgTable("purchase_order_lines", {
   purchaseOrderId: integer("purchase_order_id")
     .notNull()
     .references(() => purchaseOrdersTable.id, { onDelete: "cascade" }),
-  skuId: integer("sku_id")
+  skuCode: text("sku_code")
     .notNull()
-    .references(() => skusTable.id),
-  quantity: integer("quantity").notNull(),
+    .references(() => skusTable.skuCode),
+  quantity: numeric("quantity", { precision: 14, scale: 4 }).notNull(),
   unitCostUsd: numeric("unit_cost_usd", { precision: 10, scale: 2 }),
 });
 

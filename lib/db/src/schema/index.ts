@@ -13,6 +13,7 @@ export * from "./skuSuppliers";
 export * from "./channels";
 export * from "./salesRecords";
 export * from "./inventoryMovements";
+export * from "./inventorySnapshots";
 export * from "./purchaseOrders";
 export * from "./purchaseOrderLines";
 export * from "./forecastRuns";

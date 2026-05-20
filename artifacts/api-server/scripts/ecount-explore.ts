@@ -153,22 +153,7 @@ async function main(): Promise<void> {
 
   // Try several possible item-list endpoint names (docs are ambiguous on which to use)
   console.log();
-  const candidates = [
-    "InventoryBasic/ViewBasicProducts",
-    "InventoryBasic/GetBasicProducts",
-    "InventoryBasic/GetListBasicProducts",
-    "InventoryBasic/ViewBasic",
-    "InventoryBasic/GetBasic",
-    "InventoryBasic/GetListBasic",
-    "InventoryBasic/SaveBasicProducts",  // not what we want but tells us module exists
-    "InventoryBasic/SaveBasicInfo",
-    "Inventory/ViewProducts",
-    "Inventory/GetProducts",
-    "Inventory/GetList",
-    "BasicProducts/View",
-    "BasicProducts/GetList",
-    "ItemMaster/GetList",
-  ];
+  const candidates = ["InventoryBasic/GetBasicProductsList"];
   const host = envName === "prod" ? "oapi" : "sboapi";
   for (const path of candidates) {
     const url = `https://${host}${zone}.ecount.com/OAPI/V2/${path}?SESSION_ID=${sessionId}`;
@@ -179,7 +164,11 @@ async function main(): Promise<void> {
         console.log(`    Errors:`, JSON.stringify(r.Errors).slice(0, 300));
         console.log(`    Error:`, JSON.stringify(r.Error).slice(0, 300));
       }
-      const result = r.Data?.Result;
+      let result: unknown = r.Data?.Result;
+      // Ecount's docs sometimes wrap arrays as JSON strings — parse if necessary
+      if (typeof result === "string") {
+        try { result = JSON.parse(result); } catch { /* leave as string */ }
+      }
       const firstItem = Array.isArray(result) ? (result[0] as Record<string, unknown>) : result && typeof result === "object" ? (result as Record<string, unknown>) : null;
       if (firstItem) {
         describeFields(firstItem, `${path}[0]`);

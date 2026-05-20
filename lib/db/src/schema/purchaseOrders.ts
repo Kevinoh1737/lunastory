@@ -19,7 +19,7 @@ import { suppliersTable } from "./suppliers";
 export type ContainerPlanSnapshot = {
   containers: Array<{
     type: "20ft" | "40ft" | "40HC";
-    skus: Array<{ skuId: number; quantity: number }>;
+    skus: Array<{ skuCode: string; quantity: number }>;
     cbmUsed: number;
     weightKg: number;
   }>;
