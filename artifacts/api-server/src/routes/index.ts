@@ -7,6 +7,7 @@ import tasksRouter from "./tasks";
 import guideImagesRouter from "./guideImages";
 import videosRouter from "./videos";
 import videoTasksRouter from "./videoTasks";
+import ecountRouter from "./ecount";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(tasksRouter);
 router.use(guideImagesRouter);
 router.use(videoTasksRouter);
 router.use(videosRouter);
+router.use(ecountRouter);
 
 export default router;
