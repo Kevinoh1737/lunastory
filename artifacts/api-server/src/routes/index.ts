@@ -8,6 +8,8 @@ import guideImagesRouter from "./guideImages";
 import videosRouter from "./videos";
 import videoTasksRouter from "./videoTasks";
 import ecountRouter from "./ecount";
+import skusRouter from "./skus";
+import inventoryRouter from "./inventory";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(guideImagesRouter);
 router.use(videoTasksRouter);
 router.use(videosRouter);
 router.use(ecountRouter);
+router.use(skusRouter);
+router.use(inventoryRouter);
 
 export default router;
