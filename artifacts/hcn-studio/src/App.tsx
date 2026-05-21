@@ -13,12 +13,16 @@ import AssetCreator from "@/pages/asset-creator";
 import TaskList from "@/pages/task-list";
 import VideoTaskList from "@/pages/video-task-list";
 import VideoStudio from "@/pages/video-studio";
+import OnHandPage from "@/pages/inventory/on-hand";
+import SkuListPage from "@/pages/inventory/sku-list";
+import SkuDetailPage from "@/pages/inventory/sku-detail";
 
 const queryClient = new QueryClient();
 
 function SimpleHeader() {
   const [location] = useLocation();
   const isProductDevActive = location.startsWith("/tasks") || location.startsWith("/videos");
+  const isInventoryActive = location.startsWith("/inventory");
 
   return (
     <header className="h-14 flex-none border-b border-[#3a3a3a] bg-[#252525] flex items-center px-6 gap-6 sticky top-0 z-40">
@@ -89,18 +93,49 @@ function SimpleHeader() {
           </TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="px-3 py-1.5 text-sm font-medium rounded text-[#9ca3af] opacity-50 cursor-not-allowed select-none"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded transition-colors outline-none ${
+                isInventoryActive
+                  ? "bg-[#333] text-[#4a9cf6]"
+                  : "text-[#9ca3af] hover:text-[#e8e8e8] hover:bg-[#333]"
+              }`}
             >
               제품 관리
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="bg-[#333] border-[#3a3a3a] text-[#9ca3af] text-xs">
-            준비 중
-          </TooltipContent>
-        </Tooltip>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="bg-[#2a2a2a] border-[#3a3a3a] text-[#e8e8e8] min-w-[160px]"
+          >
+            <DropdownMenuItem asChild>
+              <Link
+                href="/inventory/on-hand"
+                className={`cursor-pointer px-3 py-2 text-sm rounded transition-colors w-full block ${
+                  location.startsWith("/inventory/on-hand")
+                    ? "text-[#4a9cf6]"
+                    : "text-[#9ca3af] hover:text-[#e8e8e8]"
+                }`}
+              >
+                현재 재고
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/inventory/skus"
+                className={`cursor-pointer px-3 py-2 text-sm rounded transition-colors w-full block ${
+                  location === "/inventory/skus" || location.startsWith("/inventory/skus/")
+                    ? "text-[#4a9cf6]"
+                    : "text-[#9ca3af] hover:text-[#e8e8e8]"
+                }`}
+              >
+                SKU 마스터
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
     </header>
   );
@@ -121,6 +156,10 @@ function AppContent() {
         <Route path="/tasks/:id" component={AssetCreator} />
         <Route path="/videos" component={VideoTaskList} />
         <Route path="/videos/:id" component={VideoStudio} />
+        <Route path="/inventory" component={() => <Redirect to="/inventory/on-hand" />} />
+        <Route path="/inventory/on-hand" component={OnHandPage} />
+        <Route path="/inventory/skus" component={SkuListPage} />
+        <Route path="/inventory/skus/:code" component={SkuDetailPage} />
         <Route component={() => <Redirect to="/tasks" />} />
       </Switch>
     </div>
