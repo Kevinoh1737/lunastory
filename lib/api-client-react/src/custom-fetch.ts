@@ -297,9 +297,26 @@ export async function customFetch<T = unknown>(
     headers.set("accept", DEFAULT_JSON_ACCEPT);
   }
 
+  // Soft-lock auth: attach the localStorage-backed Bearer token to every call
+  // unless the caller already set Authorization explicitly.
+  if (typeof window !== "undefined" && !headers.has("authorization")) {
+    const token = window.localStorage.getItem("lunastory.token");
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+
   const requestInfo = { method, url: resolveUrl(input) };
 
   const response = await fetch(input, { ...init, method, headers });
+
+  // On 401, clear the bad token + reload so the LoginGate kicks in. Only
+  // happens when a token was actually present (otherwise this is the
+  // initial-unlock flow itself).
+  if (response.status === 401 && typeof window !== "undefined") {
+    if (window.localStorage.getItem("lunastory.token")) {
+      window.localStorage.removeItem("lunastory.token");
+      window.location.reload();
+    }
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

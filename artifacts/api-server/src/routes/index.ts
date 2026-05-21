@@ -10,6 +10,7 @@ import videoTasksRouter from "./videoTasks";
 import ecountRouter from "./ecount";
 import skusRouter from "./skus";
 import inventoryRouter from "./inventory";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(videosRouter);
 router.use(ecountRouter);
 router.use(skusRouter);
 router.use(inventoryRouter);
+router.use(authRouter);
 
 export default router;

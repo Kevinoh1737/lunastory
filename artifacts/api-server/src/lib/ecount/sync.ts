@@ -121,33 +121,39 @@ export async function syncInventorySnapshots(baseDate?: string): Promise<SyncRes
   let rowsRead = 0;
   let rowsWritten = 0;
   try {
-    const { rows, totalCnt } = await getInventoryBalance({ baseDate: date });
-    rowsRead = totalCnt || rows.length;
-    if (rows.length === 0) {
-      await recordSyncState("inventory", runId, true);
-      return { resource: "inventory", runId, ok: true, rowsRead, rowsWritten: 0, durationMs: Date.now() - t0 };
-    }
+    // Pull one snapshot per warehouse so we keep per-warehouse history.
+    // `ECOUNT_INVENTORY_WAREHOUSES` is a comma-separated list of WH_CD codes
+    // (e.g. "200" = 덕영창고 from 창고별재고현황). If unset, falls back to
+    // the all-warehouses-summed call (WH_CD="") for backward compatibility.
+    const whEnv = process.env.ECOUNT_INVENTORY_WAREHOUSES;
+    const warehouses = whEnv ? whEnv.split(",").map((s) => s.trim()).filter(Boolean) : [""];
 
-    const BATCH = 200;
-    for (let i = 0; i < rows.length; i += BATCH) {
-      const batch = rows
-        .slice(i, i + BATCH)
-        .map((r) => ecountStockRowToSnapshot(r, { snapshotDate }));
-      await db
-        .insert(inventorySnapshotsTable)
-        .values(batch)
-        .onConflictDoUpdate({
-          target: [
-            inventorySnapshotsTable.skuCode,
-            inventorySnapshotsTable.warehouseCode,
-            inventorySnapshotsTable.snapshotDate,
-          ],
-          set: {
-            balanceQty: sql`EXCLUDED.balance_qty`,
-            syncedAt: sql`NOW()`,
-          },
-        });
-      rowsWritten += batch.length;
+    for (const wh of warehouses) {
+      const { rows, totalCnt } = await getInventoryBalance({ baseDate: date, whCd: wh });
+      rowsRead += totalCnt || rows.length;
+      if (rows.length === 0) continue;
+
+      const BATCH = 200;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const batch = rows
+          .slice(i, i + BATCH)
+          .map((r) => ecountStockRowToSnapshot(r, { snapshotDate, warehouseCode: wh }));
+        await db
+          .insert(inventorySnapshotsTable)
+          .values(batch)
+          .onConflictDoUpdate({
+            target: [
+              inventorySnapshotsTable.skuCode,
+              inventorySnapshotsTable.warehouseCode,
+              inventorySnapshotsTable.snapshotDate,
+            ],
+            set: {
+              balanceQty: sql`EXCLUDED.balance_qty`,
+              syncedAt: sql`NOW()`,
+            },
+          });
+        rowsWritten += batch.length;
+      }
     }
 
     await recordSyncState("inventory", runId, true);

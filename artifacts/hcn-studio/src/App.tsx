@@ -16,6 +16,7 @@ import VideoStudio from "@/pages/video-studio";
 import OnHandPage from "@/pages/inventory/on-hand";
 import SkuListPage from "@/pages/inventory/sku-list";
 import SkuDetailPage from "@/pages/inventory/sku-detail";
+import { LoginGate } from "@/components/login-gate";
 
 const queryClient = new QueryClient();
 
@@ -170,9 +171,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <LoginGate>
+          <Router>
+            <AppContent />
+          </Router>
+        </LoginGate>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

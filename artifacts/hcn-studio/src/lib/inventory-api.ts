@@ -4,6 +4,7 @@
  * we'll fold these into the OpenAPI spec.
  */
 import { useQuery } from "@tanstack/react-query";
+import { authHeader, handleUnauthorized } from "@/lib/auth";
 
 export type SkuListItem = {
   skuCode: string;
@@ -82,7 +83,13 @@ export type SyncStateRow = {
 };
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: { Accept: "application/json" } });
+  const res = await fetch(path, {
+    headers: { Accept: "application/json", ...authHeader() },
+  });
+  if (res.status === 401) {
+    handleUnauthorized();
+    throw new Error(`${path} → 401 Unauthorized`);
+  }
   if (!res.ok) throw new Error(`${path} → HTTP ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }

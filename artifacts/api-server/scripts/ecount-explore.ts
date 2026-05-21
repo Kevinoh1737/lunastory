@@ -186,13 +186,21 @@ async function main(): Promise<void> {
 
   // Sales — from screenshot 3.09 series, the endpoint is something like Sale/GetListData or SaveSale
   const salesCandidates = [
-    "Sale/GetListData",
-    "Sale/GetSaleList",
-    "Sale/GetList",
-    "Sale/GetSale",
-    "Sale/View",
-    "SaleBasic/GetListData",
-    "SaleBasic/GetSaleList",
+    // Pattern: matches the working InventoryBalance/GetListInventoryBalanceStatus naming
+    "Sale/GetListSaleStatus",
+    "Sale/GetSaleStatus",
+    "SaleStatus/GetListSaleStatus",
+    "SaleStatus/GetSaleStatus",
+    // Sale-as-Slip naming (Ecount internally uses "slip" / 전표 terminology)
+    "Sale/GetSlipList",
+    "Sale/GetListSlipStatus",
+    "Slip/GetListSaleSlip",
+    // Inventory IO (입출고) — sales might be filed under outbound transactions
+    "InventoryIO/GetListInventoryIOStatus",
+    "InventoryIO/GetIOList",
+    "IO/GetListIOStatus",
+    // Other naming
+    "Sale/GetSaleList",  // already tried but worth confirming with date params
   ];
   const today = new Date();
   const monthAgo = new Date(today);
