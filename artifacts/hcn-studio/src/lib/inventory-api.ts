@@ -82,6 +82,44 @@ export type SyncStateRow = {
   lastRunId: string | null;
 };
 
+export type ImportSummary = {
+  mode: "dry-run" | "commit";
+  filename: string;
+  filesize: number;
+  parsed: number;
+  imported: number;
+  duplicates: number;
+  unmappedSkus: number;
+  errors: number;
+  unmappedSkuCodes: string[];
+  warnings: string[];
+  refundCount: number;
+  durationMs: number;
+  errorSamples: Array<{ rowIndex: number; reason: string; rawRow: Record<string, unknown> }>;
+};
+
+export type ImportEvent = {
+  bucket: string;
+  count: number;
+  refunds: number;
+  firstSoldAt: string;
+  lastSoldAt: string;
+  channelCode: string;
+};
+
+export async function uploadSalesExcel(file: File, dryRun: boolean): Promise<ImportSummary> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const url = `/api/sales/import-excel${dryRun ? "?dryRun=true" : ""}`;
+  const res = await fetch(url, { method: "POST", body: formData, headers: { ...authHeader() } });
+  if (res.status === 401) { handleUnauthorized(); throw new Error("Unauthorized"); }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Upload failed (HTTP ${res.status}): ${body.slice(0, 300)}`);
+  }
+  return res.json() as Promise<ImportSummary>;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, {
     headers: { Accept: "application/json", ...authHeader() },
@@ -178,6 +216,13 @@ export function useSyncStatus() {
     queryKey: ["ecount-sync-status"],
     queryFn: () => getJson<SyncStateRow[]>("/api/ecount/sync/status"),
     refetchInterval: 30_000, // 30s — cheap query, keeps the pill fresh
+  });
+}
+
+export function useImportHistory() {
+  return useQuery({
+    queryKey: ["sales-import-history"],
+    queryFn: () => getJson<{ imports: ImportEvent[] }>("/api/sales/imports"),
   });
 }
 

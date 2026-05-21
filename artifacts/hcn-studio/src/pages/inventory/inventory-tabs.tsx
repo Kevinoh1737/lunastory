@@ -10,6 +10,7 @@ export function InventoryTabs() {
   const tabs: Array<{ to: string; label: string; match: (p: string) => boolean }> = [
     { to: "/inventory/on-hand", label: "현재 재고", match: (p) => p.startsWith("/inventory/on-hand") },
     { to: "/inventory/skus", label: "SKU 마스터", match: (p) => p === "/inventory/skus" || p.startsWith("/inventory/skus/") },
+    { to: "/inventory/sales-import", label: "판매 데이터 가져오기", match: (p) => p.startsWith("/inventory/sales-import") },
   ];
 
   return (

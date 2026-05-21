@@ -16,6 +16,7 @@ import VideoStudio from "@/pages/video-studio";
 import OnHandPage from "@/pages/inventory/on-hand";
 import SkuListPage from "@/pages/inventory/sku-list";
 import SkuDetailPage from "@/pages/inventory/sku-detail";
+import SalesImportPage from "@/pages/inventory/sales-import";
 import { LoginGate } from "@/components/login-gate";
 
 const queryClient = new QueryClient();
@@ -135,6 +136,18 @@ function SimpleHeader() {
                 SKU 마스터
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/inventory/sales-import"
+                className={`cursor-pointer px-3 py-2 text-sm rounded transition-colors w-full block ${
+                  location.startsWith("/inventory/sales-import")
+                    ? "text-[#4a9cf6]"
+                    : "text-[#9ca3af] hover:text-[#e8e8e8]"
+                }`}
+              >
+                판매 데이터 가져오기
+              </Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
@@ -161,6 +174,7 @@ function AppContent() {
         <Route path="/inventory/on-hand" component={OnHandPage} />
         <Route path="/inventory/skus" component={SkuListPage} />
         <Route path="/inventory/skus/:code" component={SkuDetailPage} />
+        <Route path="/inventory/sales-import" component={SalesImportPage} />
         <Route component={() => <Redirect to="/tasks" />} />
       </Switch>
     </div>
